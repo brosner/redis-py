@@ -305,6 +305,7 @@ class Redis(threading.local):
         if self.subscribed and not subscription_command:
             raise RedisError("Cannot issue commands other than SUBSCRIBE and "
                 "UNSUBSCRIBE while channels are open")
+        blocking = options.pop("blocking", False)
         try:
             self.connection.send(command, self)
             if subscription_command:
@@ -312,6 +313,8 @@ class Redis(threading.local):
             return self.parse_response(command_name, **options)
         except ConnectionError:
             self.connection.disconnect()
+            if blocking:
+                raise
             self.connection.send(command, self)
             if subscription_command:
                 return None
@@ -691,7 +694,7 @@ class Redis(threading.local):
         else:
             keys = list(keys)
         keys.append(timeout)
-        return self.execute_command('BLPOP', *keys)
+        return self.execute_command('BLPOP', *keys, **dict(blocking=True))
 
     def brpop(self, keys, timeout=0):
         """
@@ -709,7 +712,7 @@ class Redis(threading.local):
         else:
             keys = list(keys)
         keys.append(timeout)
-        return self.execute_command('BRPOP', *keys)
+        return self.execute_command('BRPOP', *keys, **dict(blocking=True))
 
     def lindex(self, name, index):
         """
